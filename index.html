@@ -19,11 +19,7 @@
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
 const brokerUrl = 'wss://f9c3997be6a542ef8014383c1e3835b8.s1.eu.hivemq.cloud:8884/mqtt';
-const options = {
-  username: 'esp32user',
-  password: 'Mypassword123'
-};
-
+const options = { username: 'esp32user', password: 'Mypassword123' };
 const client = mqtt.connect(brokerUrl, options);
 
 client.on('connect', () => {
@@ -33,19 +29,12 @@ client.on('connect', () => {
 
 const btn = document.getElementById('controlBtn');
 const statusDiv = document.getElementById('status');
+
+let state = 'APRI';  // Stati possibili: APRI → FERMA → CHIUDI
 let timer = null;
 let countdown = 40;
 
-btn.addEventListener('click', () => {
-  // Cambia pulsante e stato
-  btn.textContent = 'FERMA';
-  btn.style.backgroundColor = 'orange';
-  statusDiv.textContent = 'Cancello fermo. Chiusura automatica TRA 40 secondi';
-
-  // Invia comando APRI al topic MQTT
-  client.publish('cancello/apri', 'APRI');
-
-  // Avvia il countdown
+function startCountdown() {
   countdown = 40;
   if (timer) clearInterval(timer);
   timer = setInterval(() => {
@@ -54,11 +43,35 @@ btn.addEventListener('click', () => {
     if (countdown < 0) {
       clearInterval(timer);
       statusDiv.textContent = 'Chiusura automatica...';
+      state = 'APRI';
       btn.textContent = 'APRI';
       btn.style.backgroundColor = 'green';
-      // Qui si può inviare comando CHIUDI se implementato
+      client.publish('cancello/chiudi', 'CHIUDI'); // chiusura automatica
     }
   }, 1000);
+}
+
+btn.addEventListener('click', () => {
+  if (state === 'APRI') {
+    state = 'FERMA';
+    btn.textContent = 'FERMA';
+    btn.style.backgroundColor = 'orange';
+    statusDiv.textContent = 'Cancello fermo. Chiusura automatica TRA 40 secondi';
+    client.publish('cancello/apri', 'APRI');
+    startCountdown();
+  } else if (state === 'FERMA') {
+    state = 'CHIUDI';
+    btn.textContent = 'CHIUDI';
+    btn.style.backgroundColor = 'red';
+    clearInterval(timer);
+    statusDiv.textContent = 'Cancello chiuso manualmente';
+    client.publish('cancello/chiudi', 'CHIUDI');
+  } else if (state === 'CHIUDI') {
+    state = 'APRI';
+    btn.textContent = 'APRI';
+    btn.style.backgroundColor = 'green';
+    statusDiv.textContent = '';
+  }
 });
 </script>
 
