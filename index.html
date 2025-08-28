@@ -1,92 +1,88 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controllo Cancello</title>
-<style>
-  body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-  button { padding: 20px 40px; font-size: 24px; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.3s; }
-  #status { margin-top: 20px; font-size: 20px; }
-  #barContainer {
-    width: 300px; height: 25px; background-color: #ddd; margin: 20px auto; border-radius: 5px;
-  }
-  #bar {
-    height: 100%; width: 0%; background-color: #4CAF50; border-radius: 5px; transition: width 1s linear;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controllo Cancello</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f4f4f9;
+    }
+    .container {
+      text-align: center;
+      background: #fff;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-bottom: 30px;
+      color: #333;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 20px 40px;
+      font-size: 24px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #555;
+    }
+  </style>
+  <!-- Importa la libreria MQTT.js da CDN -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
+  <div class="container">
+    <h1>Controllo Cancello</h1>
+    <button id="apriBtn">APRI</button>
+    <div id="status">Stato: Disconnesso</div>
+  </div>
 
-<h1>Controllo Cancello</h1>
-<button id="controlBtn" style="background-color: green; color: white;">APRI</button>
-<div id="status"></div>
-<div id="barContainer"><div id="bar"></div></div>
+  <script>
+    // Configurazione HiveMQ WebSocket
+    const broker = 'wss://f9c3997be6a542ef8014383c1e3835b8.s1.eu.hivemq.cloud:8884/mqtt';
+    const options = {
+      username: 'esp32user',
+      password: 'Mypassword123',
+      reconnectPeriod: 1000
+    };
 
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script>
-const brokerUrl = 'wss://f9c3997be6a542ef8014383c1e3835b8.s1.eu.hivemq.cloud:8884/mqtt';
-const options = { username: 'esp32user', password: 'Mypassword123' };
-const client = mqtt.connect(brokerUrl, options);
+    const client = mqtt.connect(broker, options);
+    const statusDiv = document.getElementById('status');
 
-client.on('connect', () => {
-  console.log('MQTT connesso');
-  client.subscribe('cancello/stato');
-});
+    client.on('connect', () => {
+      statusDiv.textContent = 'Stato: Connesso al broker';
+      client.subscribe('cancello/stato');
+    });
 
-const btn = document.getElementById('controlBtn');
-const statusDiv = document.getElementById('status');
-const bar = document.getElementById('bar');
+    client.on('message', (topic, message) => {
+      if(topic === 'cancello/stato') {
+        statusDiv.textContent = 'Stato: ' + message.toString();
+      }
+    });
 
-let state = 'APRI';  // Stati: APRI → FERMA → CHIUDI
-let timer = null;
-let countdown = 40;
+    client.on('error', (err) => {
+      statusDiv.textContent = 'Errore: ' + err;
+    });
 
-function startCountdown() {
-  countdown = 40;
-  bar.style.width = '100%';
-  if (timer) clearInterval(timer);
-  timer = setInterval(() => {
-    statusDiv.textContent = `Chiusura automatica TRA ${countdown} secondi`;
-    bar.style.width = `${(countdown / 40) * 100}%`;
-    countdown--;
-    if (countdown < 0) {
-      clearInterval(timer);
-      statusDiv.textContent = 'Chiusura automatica...';
-      state = 'APRI';
-      btn.textContent = 'APRI';
-      btn.style.backgroundColor = 'green';
-      bar.style.width = '0%';
-      client.publish('cancello/chiudi', 'CHIUDI'); // chiusura automatica
-    }
-  }, 1000);
-}
-
-btn.addEventListener('click', () => {
-  if (state === 'APRI') {
-    state = 'FERMA';
-    btn.textContent = 'FERMA';
-    btn.style.backgroundColor = 'orange';
-    statusDiv.textContent = 'Cancello fermo. Chiusura automatica TRA 40 secondi';
-    client.publish('cancello/apri', 'APRI');
-    startCountdown();
-  } else if (state === 'FERMA') {
-    state = 'CHIUDI';
-    btn.textContent = 'CHIUDI';
-    btn.style.backgroundColor = 'red';
-    clearInterval(timer);
-    statusDiv.textContent = 'Cancello chiuso manualmente';
-    bar.style.width = '0%';
-    client.publish('cancello/chiudi', 'CHIUDI');
-  } else if (state === 'CHIUDI') {
-    state = 'APRI';
-    btn.textContent = 'APRI';
-    btn.style.backgroundColor = 'green';
-    statusDiv.textContent = '';
-    bar.style.width = '0%';
-  }
-});
-</script>
-
+    document.getElementById('apriBtn').addEventListener('click', () => {
+      client.publish('cancello/apri', 'APRI', { qos: 0 });
+    });
+  </script>
 </body>
 </html>
