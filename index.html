@@ -1,74 +1,28 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controllo Cancello</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    background-color: #f0f0f0;
-  }
-  h1 { margin-bottom: 40px; }
-  button {
-    padding: 20px 40px;
-    font-size: 28px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  #status {
-    margin-top: 20px;
-    font-size: 20px;
-    min-height: 24px;
-  }
-</style>
-</head>
-<body>
-
-<h1>Controllo Cancello</h1>
-<button id="controlBtn" style="background-color: green; color: white;">APRI</button>
-<div id="status"></div>
-
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script>
-const brokerUrl = 'wss://f9c3997be6a542ef8014383c1e3835b8.s1.eu.hivemq.cloud:8884/mqtt';
-const options = { username: 'esp32user', password: 'Mypassword123' };
-const client = mqtt.connect(brokerUrl, options);
-
-client.on('connect', () => {
-  console.log('MQTT connesso');
-});
-
-const btn = document.getElementById('controlBtn');
-const statusDiv = document.getElementById('status');
-
-let isOpen = false; // stato del servo: chiuso = false, aperto = true
-
 btn.addEventListener('click', () => {
-  if (!isOpen) {
-    // Apri il servo (0° → 15°)
-    client.publish('cancello/apri', 'APRI');
+  let comando = '';
+  if (state === 'APRI') {
+    comando = 'APRI';
+    state = 'FERMA';
+    btn.textContent = 'FERMA';
+    btn.style.backgroundColor = 'orange';
+    statusDiv.textContent = 'Cancello in movimento, puoi fermarlo';
+  } else if (state === 'FERMA') {
+    comando = 'CHIUDI';
+    state = 'CHIUDI';
     btn.textContent = 'CHIUDI';
     btn.style.backgroundColor = 'red';
-    statusDiv.textContent = 'Servo aperto a 15°';
-  } else {
-    // Chiudi il servo (15° → 0°)
-    client.publish('cancello/apri', 'CHIUDI');
+    statusDiv.textContent = 'Cancello fermo. Countdown per chiusura automatica in corso';
+    startCountdown();
+  } else if (state === 'CHIUDI') {
+    comando = 'APRI';
+    clearInterval(timer);
+    state = 'APRI';
     btn.textContent = 'APRI';
     btn.style.backgroundColor = 'green';
-    statusDiv.textContent = 'Servo chiuso a 0°';
+    statusDiv.textContent = '';
+    bar.style.width = '0%';
   }
-  isOpen = !isOpen; // inverte stato
-});
-</script>
 
-</body>
-</html>
+  // Invia il comando corretto al topic
+  client.publish('cancello/apri', comando);
+});
