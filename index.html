@@ -6,8 +6,14 @@
 <title>Controllo Cancello</title>
 <style>
   body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-  button { padding: 20px 40px; font-size: 24px; border: none; border-radius: 10px; cursor: pointer; }
+  button { padding: 20px 40px; font-size: 24px; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.3s; }
   #status { margin-top: 20px; font-size: 20px; }
+  #barContainer {
+    width: 300px; height: 25px; background-color: #ddd; margin: 20px auto; border-radius: 5px;
+  }
+  #bar {
+    height: 100%; width: 0%; background-color: #4CAF50; border-radius: 5px; transition: width 1s linear;
+  }
 </style>
 </head>
 <body>
@@ -15,6 +21,7 @@
 <h1>Controllo Cancello</h1>
 <button id="controlBtn" style="background-color: green; color: white;">APRI</button>
 <div id="status"></div>
+<div id="barContainer"><div id="bar"></div></div>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
@@ -29,16 +36,19 @@ client.on('connect', () => {
 
 const btn = document.getElementById('controlBtn');
 const statusDiv = document.getElementById('status');
+const bar = document.getElementById('bar');
 
-let state = 'APRI';  // Stati possibili: APRI → FERMA → CHIUDI
+let state = 'APRI';  // Stati: APRI → FERMA → CHIUDI
 let timer = null;
 let countdown = 40;
 
 function startCountdown() {
   countdown = 40;
+  bar.style.width = '100%';
   if (timer) clearInterval(timer);
   timer = setInterval(() => {
     statusDiv.textContent = `Chiusura automatica TRA ${countdown} secondi`;
+    bar.style.width = `${(countdown / 40) * 100}%`;
     countdown--;
     if (countdown < 0) {
       clearInterval(timer);
@@ -46,6 +56,7 @@ function startCountdown() {
       state = 'APRI';
       btn.textContent = 'APRI';
       btn.style.backgroundColor = 'green';
+      bar.style.width = '0%';
       client.publish('cancello/chiudi', 'CHIUDI'); // chiusura automatica
     }
   }, 1000);
@@ -65,12 +76,14 @@ btn.addEventListener('click', () => {
     btn.style.backgroundColor = 'red';
     clearInterval(timer);
     statusDiv.textContent = 'Cancello chiuso manualmente';
+    bar.style.width = '0%';
     client.publish('cancello/chiudi', 'CHIUDI');
   } else if (state === 'CHIUDI') {
     state = 'APRI';
     btn.textContent = 'APRI';
     btn.style.backgroundColor = 'green';
     statusDiv.textContent = '';
+    bar.style.width = '0%';
   }
 });
 </script>
