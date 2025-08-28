@@ -34,7 +34,7 @@
 <body>
 
 <h1>Controllo Cancello</h1>
-<button id="controlBtn" style="background-color: green; color: white;">MUOVI</button>
+<button id="controlBtn" style="background-color: green; color: white;">APRI</button>
 <div id="status"></div>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -50,25 +50,23 @@ client.on('connect', () => {
 const btn = document.getElementById('controlBtn');
 const statusDiv = document.getElementById('status');
 
-// Funzione che fa il movimento avanti e indietro
-function muoviServo() {
-  // Apri: 0° → 15°
-  client.publish('cancello/apri', 'APRI');
-  statusDiv.textContent = 'Servo in apertura...';
-  
-  setTimeout(() => {
-    // Chiudi: 15° → 0°
-    client.publish('cancello/apri', 'CHIUDI');
-    statusDiv.textContent = 'Servo in chiusura...';
-    
-    setTimeout(() => {
-      statusDiv.textContent = 'Servo a riposo (0°)';
-    }, 500); // piccolo delay finale per aggiornare lo stato
-  }, 500); // tempo per completare apertura
-}
+let isOpen = false; // stato del servo: chiuso = false, aperto = true
 
 btn.addEventListener('click', () => {
-  muoviServo();
+  if (!isOpen) {
+    // Apri il servo (0° → 15°)
+    client.publish('cancello/apri', 'APRI');
+    btn.textContent = 'CHIUDI';
+    btn.style.backgroundColor = 'red';
+    statusDiv.textContent = 'Servo aperto a 15°';
+  } else {
+    // Chiudi il servo (15° → 0°)
+    client.publish('cancello/apri', 'CHIUDI');
+    btn.textContent = 'APRI';
+    btn.style.backgroundColor = 'green';
+    statusDiv.textContent = 'Servo chiuso a 0°';
+  }
+  isOpen = !isOpen; // inverte stato
 });
 </script>
 
