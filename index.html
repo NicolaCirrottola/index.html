@@ -34,6 +34,22 @@
     text-align: center;
   }
 
+  #barContainer {
+    width: 300px;
+    height: 25px;
+    background-color: #ddd;
+    margin: 20px auto;
+    border-radius: 5px;
+  }
+
+  #bar {
+    height: 100%;
+    width: 0%;
+    background-color: #4CAF50;
+    border-radius: 5px;
+    transition: width 1s linear;
+  }
+
   #footer {
     position: absolute;
     bottom: 10px;
@@ -47,6 +63,7 @@
 <h1>Controllo Cancello</h1>
 <button id="controlBtn" style="background-color: green; color: white;">APRI</button>
 <div id="status"></div>
+<div id="barContainer"><div id="bar"></div></div>
 <div id="footer">Creato da Nicola Cirrottola</div>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -62,32 +79,62 @@ client.on('connect', () => {
 
 const btn = document.getElementById('controlBtn');
 const statusDiv = document.getElementById('status');
+const bar = document.getElementById('bar');
 
 let state = 'APRI';  // Stati: APRI → FERMA → CHIUDI
 let timer = null;
-const pauseTime = 40; // solo per eventuali countdown, può essere ignorato
+let countdown = 40; // per eventuale countdown automatico
+
+function startCountdown() {
+  countdown = 40;
+  bar.style.width = '100%';
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    statusDiv.textContent = `Chiusura automatica TRA ${countdown} secondi`;
+    bar.style.width = `${(countdown / 40) * 100}%`;
+    countdown--;
+    if (countdown < 0) {
+      clearInterval(timer);
+      statusDiv.textContent = 'Chiusura automatica completata';
+      state = 'APRI';
+      btn.textContent = 'APRI';
+      btn.style.backgroundColor = 'green';
+      bar.style.width = '0%';
+      client.publish('cancello/apri', 'APRI'); // manda comando APRI (Arduino farà avanti-indietro)
+    }
+  }, 1000);
+}
 
 btn.addEventListener('click', () => {
-  // Invia sempre "APRI" al topic perché il movimento avanti-indietro è gestito su Arduino
-  client.publish('cancello/apri', 'APRI');
+  let comando = '';
 
-  // Aggiorna interfaccia pulsante
   if (state === 'APRI') {
+    comando = 'APRI';
     state = 'FERMA';
     btn.textContent = 'FERMA';
     btn.style.backgroundColor = 'orange';
     statusDiv.textContent = 'Cancello in movimento, puoi fermarlo';
+
   } else if (state === 'FERMA') {
+    comando = 'APRI'; // sempre APRI, Arduino fa avanti-indietro
     state = 'CHIUDI';
     btn.textContent = 'CHIUDI';
     btn.style.backgroundColor = 'red';
-    statusDiv.textContent = 'Cancello fermo. Countdown o prossima apertura';
+    statusDiv.textContent = 'Cancello fermo. Countdown per chiusura automatica in corso';
+    startCountdown();
+
   } else if (state === 'CHIUDI') {
+    comando = 'APRI'; // sempre APRI
+    clearInterval(timer);
     state = 'APRI';
     btn.textContent = 'APRI';
     btn.style.backgroundColor = 'green';
     statusDiv.textContent = '';
+    bar.style.width = '0%';
   }
+
+  // Invia sempre APRI, Arduino gestisce il movimento completo avanti-indietro
+  client.publish('cancello/apri', comando);
 });
 </script>
 
