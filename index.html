@@ -31,6 +31,7 @@
     margin-top: 20px;
     font-size: 22px;
     min-height: 28px;
+    text-align: center;
   }
 
   #barContainer {
@@ -84,6 +85,7 @@ let state = 'APRI';  // Stati: APRI → FERMA → CHIUDI
 let timer = null;
 let countdown = 40;
 
+// Funzione countdown per chiusura automatica
 function startCountdown() {
   countdown = 40;
   bar.style.width = '100%';
@@ -99,37 +101,35 @@ function startCountdown() {
       btn.textContent = 'APRI';
       btn.style.backgroundColor = 'green';
       bar.style.width = '0%';
-      client.publish('cancello/chiudi', 'CHIUDI'); 
+      client.publish('cancello/apri', 'APRI'); // invio sempre stesso topic
     }
   }, 1000);
 }
 
+// Gestione clic pulsante
 btn.addEventListener('click', () => {
+  // Invio sempre lo stesso topic MQTT indipendentemente dallo stato
+  client.publish('cancello/apri', 'APRI');
+
+  // Aggiorna solo interfaccia e stato
   if (state === 'APRI') {
-    // APRI → FERMA
     state = 'FERMA';
     btn.textContent = 'FERMA';
     btn.style.backgroundColor = 'orange';
     statusDiv.textContent = 'Cancello in movimento, puoi fermarlo';
-    client.publish('cancello/apri', 'APRI');
-
   } else if (state === 'FERMA') {
-    // FERMA → CHIUDI con countdown
     state = 'CHIUDI';
     btn.textContent = 'CHIUDI';
     btn.style.backgroundColor = 'red';
     statusDiv.textContent = 'Cancello fermo. Countdown per chiusura automatica in corso';
-    client.publish('cancello/ferma', 'FERMA'); 
-    startCountdown();  // countdown parte solo ora
+    startCountdown();
   } else if (state === 'CHIUDI') {
-    // CHIUDI → APRI
     clearInterval(timer);
     state = 'APRI';
     btn.textContent = 'APRI';
     btn.style.backgroundColor = 'green';
     statusDiv.textContent = '';
     bar.style.width = '0%';
-    client.publish('cancello/chiudi', 'CHIUDI'); 
   }
 });
 </script>
