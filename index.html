@@ -11,8 +11,8 @@
     font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* centra verticalmente */
-    align-items: center;     /* centra orizzontalmente */
+    justify-content: center;
+    align-items: center;
     background-color: #f0f0f0;
   }
 
@@ -84,10 +84,10 @@ let state = 'APRI';  // Stati: APRI → FERMA → CHIUDI
 let timer = null;
 let countdown = 40;
 
-// Funzione per avviare il countdown
 function startCountdown() {
   countdown = 40;
   bar.style.width = '100%';
+  if (timer) clearInterval(timer);
   timer = setInterval(() => {
     statusDiv.textContent = `Chiusura automatica TRA ${countdown} secondi`;
     bar.style.width = `${(countdown / 40) * 100}%`;
@@ -99,7 +99,7 @@ function startCountdown() {
       btn.textContent = 'APRI';
       btn.style.backgroundColor = 'green';
       bar.style.width = '0%';
-      client.publish('cancello/chiudi', 'CHIUDI'); // chiusura automatica
+      client.publish('cancello/chiudi', 'CHIUDI'); 
     }
   }, 1000);
 }
@@ -119,7 +119,7 @@ btn.addEventListener('click', () => {
     btn.textContent = 'CHIUDI';
     btn.style.backgroundColor = 'red';
     statusDiv.textContent = 'Cancello fermo. Countdown per chiusura automatica in corso';
-    client.publish('cancello/ferma', 'FERMA'); // comando opzionale per fermare il cancello fisicamente
+    client.publish('cancello/ferma', 'FERMA'); 
     startCountdown();  // countdown parte solo ora
   } else if (state === 'CHIUDI') {
     // CHIUDI → APRI
@@ -129,7 +129,7 @@ btn.addEventListener('click', () => {
     btn.style.backgroundColor = 'green';
     statusDiv.textContent = '';
     bar.style.width = '0%';
-    client.publish('cancello/chiudi', 'CHIUDI'); // chiusura manuale
+    client.publish('cancello/chiudi', 'CHIUDI'); 
   }
 });
 </script>
