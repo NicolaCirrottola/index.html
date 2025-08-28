@@ -1,28 +1,95 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controllo Cancello</title>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f0f0;
+  }
+
+  h1 { margin-bottom: 40px; }
+
+  button {
+    padding: 30px 60px;
+    font-size: 32px;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  #status {
+    margin-top: 20px;
+    font-size: 22px;
+    min-height: 28px;
+    text-align: center;
+  }
+
+  #footer {
+    position: absolute;
+    bottom: 10px;
+    font-size: 14px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+
+<h1>Controllo Cancello</h1>
+<button id="controlBtn" style="background-color: green; color: white;">APRI</button>
+<div id="status"></div>
+<div id="footer">Creato da Nicola Cirrottola</div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+const brokerUrl = 'wss://f9c3997be6a542ef8014383c1e3835b8.s1.eu.hivemq.cloud:8884/mqtt';
+const options = { username: 'esp32user', password: 'Mypassword123' };
+const client = mqtt.connect(brokerUrl, options);
+
+client.on('connect', () => {
+  console.log('MQTT connesso');
+  client.subscribe('cancello/stato'); // opzionale per leggere stato dal servo
+});
+
+const btn = document.getElementById('controlBtn');
+const statusDiv = document.getElementById('status');
+
+let state = 'APRI';  // Stati: APRI → FERMA → CHIUDI
+let timer = null;
+const pauseTime = 40; // solo per eventuali countdown, può essere ignorato
+
 btn.addEventListener('click', () => {
-  let comando = '';
+  // Invia sempre "APRI" al topic perché il movimento avanti-indietro è gestito su Arduino
+  client.publish('cancello/apri', 'APRI');
+
+  // Aggiorna interfaccia pulsante
   if (state === 'APRI') {
-    comando = 'APRI';
     state = 'FERMA';
     btn.textContent = 'FERMA';
     btn.style.backgroundColor = 'orange';
     statusDiv.textContent = 'Cancello in movimento, puoi fermarlo';
   } else if (state === 'FERMA') {
-    comando = 'CHIUDI';
     state = 'CHIUDI';
     btn.textContent = 'CHIUDI';
     btn.style.backgroundColor = 'red';
-    statusDiv.textContent = 'Cancello fermo. Countdown per chiusura automatica in corso';
-    startCountdown();
+    statusDiv.textContent = 'Cancello fermo. Countdown o prossima apertura';
   } else if (state === 'CHIUDI') {
-    comando = 'APRI';
-    clearInterval(timer);
     state = 'APRI';
     btn.textContent = 'APRI';
     btn.style.backgroundColor = 'green';
     statusDiv.textContent = '';
-    bar.style.width = '0%';
   }
-
-  // Invia il comando corretto al topic
-  client.publish('cancello/apri', comando);
 });
+</script>
+
+</body>
+</html>
